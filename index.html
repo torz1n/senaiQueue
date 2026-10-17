@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <!-- Essa meta tag é essencial no mobile-first: sem ela o celular
+       mostra a página "encolhida", como se fosse um site de desktop. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fila</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+
+    <header class="topo">
+      <!-- A bolinha é só decoração (tema ping pong), por isso aria-hidden:
+           leitores de tela vão ignorar. -->
+      <h1><span class="bolinha" aria-hidden="true"></span>SENAI Tênis de Mesa</h1>
+      <p class="subtitulo">Digite seu nome para entrar na fila.</p>
+    </header>
+
+    <!-- Usamos <form> de propósito: com um botão type="submit" dentro,
+         o navegador já dispara o evento "submit" ao apertar Enter.
+         Assim não precisamos escrever código extra para o Enter. -->
+    <form id="formulario" class="formulario" novalidate>
+      <label for="campo-nome" class="sr-somente">Insira seu nome</label>
+      <input
+        id="campo-nome"
+        type="text"
+        placeholder="Seu nome"
+        maxlength="30"
+        autocomplete="off"
+      >
+      <button type="submit">Entrar na fila</button>
+    </form>
+
+    <!-- Mensagem de erro de validação. aria-live faz leitores de tela
+         anunciarem o erro quando o texto aparecer. -->
+    <p id="mensagem-erro" class="erro" aria-live="polite"></p>
+
+    <section class="fila">
+      <p id="contador" class="contador" aria-live="polite"></p>
+
+      <!-- A lista fica vazia no HTML: quem a preenche é o renderizar(). -->
+      <ul id="lista-fila" class="lista-fila"></ul>
+
+      <p id="mensagem-vazia" class="vazio">
+        A fila está vazia. Que tal ser o primeiro? 🏓
+      </p>
+    </section>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
