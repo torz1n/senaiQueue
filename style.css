@@ -1,0 +1,249 @@
+/* ==========================================================
+   VARIÁVEIS DE COR
+   Guardar as cores em variáveis (custom properties) evita repetir
+   códigos hexadecimais pelo arquivo. Se quiser mudar a paleta,
+   você altera em um lugar só.
+   ========================================================== */
+:root {
+  --azul: #004B8D;      /* SENAI */
+  --laranja: #FF7A1A;   /* bolinha de ping pong */
+  --vermelho: #D62828;  /* raquete: só para erros */
+  --fundo: #F4F6F8;
+  --card: #FFFFFF;
+  --texto: #1F2933;
+  --borda: #E3E8EE;
+}
+
+/* border-box faz width/padding se comportarem de forma previsível:
+   o padding passa a ficar DENTRO da largura, não somado a ela. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  /* Fonte do sistema: carrega instantaneamente e fica nativa em cada aparelho. */
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.4;
+}
+
+/* Mobile-first: o layout base já é o do celular (uma coluna, largura
+   total). Só limitamos a largura máxima para não esticar em telas grandes. */
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px 16px 48px;
+}
+
+/* ---------- Topo ---------- */
+.topo {
+  margin-bottom: 24px;
+}
+
+h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 4px;
+  font-size: 2rem;
+  color: var(--azul);
+}
+
+/* A bolinha laranja decorativa, feita só com CSS (sem imagem). */
+.bolinha {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--laranja);
+}
+
+.subtitulo {
+  margin: 0;
+  opacity: 0.75;
+}
+
+/* ---------- Formulário ---------- */
+.formulario {
+  display: flex;
+  flex-direction: column; /* empilhado no celular */
+  gap: 12px;
+}
+
+input,
+button {
+  font: inherit;
+  border-radius: 12px;
+  min-height: 52px; /* altura mínima confortável para o toque do dedo */
+}
+
+input {
+  width: 100%;
+  padding: 0 16px;
+  border: 2px solid var(--borda);
+  background: var(--card);
+  color: var(--texto);
+  /* 16px é importante: abaixo disso o iPhone dá zoom automático ao focar o campo. */
+  font-size: 1rem;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--azul);
+}
+
+/* Quando a validação falha, o JS adiciona esta classe no campo. */
+input.invalido {
+  border-color: var(--vermelho);
+}
+
+button {
+  border: none;
+  background: var(--azul);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 24px;
+}
+
+button:active {
+  transform: scale(0.98); /* feedback visual ao tocar */
+}
+
+button:focus-visible {
+  outline: 3px solid var(--laranja);
+  outline-offset: 2px;
+}
+
+/* Mensagem de erro (único lugar onde o vermelho aparece). */
+.erro {
+  min-height: 1.4em; /* reserva o espaço para a página não "pular" quando o erro aparece */
+  margin: 8px 0 0;
+  color: var(--vermelho);
+  font-size: 0.9rem;
+}
+
+/* ---------- Fila ---------- */
+.fila {
+  margin-top: 16px;
+}
+
+.contador {
+  margin: 0 0 12px;
+  font-weight: 600;
+  color: var(--azul);
+}
+
+.lista-fila {
+  list-style: none; /* tiramos os marcadores padrão: a posição é desenhada por nós */
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--borda);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(31, 41, 51, 0.08);
+}
+
+.posicao {
+  flex-shrink: 0;       /* a posição nunca encolhe, mesmo com nome longo */
+  min-width: 48px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--fundo);
+  color: var(--azul);
+  font-weight: 700;
+  text-align: center;
+}
+
+.nome {
+  min-width: 0;                /* permite o texto quebrar dentro do flex */
+  overflow-wrap: anywhere;     /* nomes sem espaço (30 letras seguidas) não estouram o card */
+}
+
+/* Destaque do primeiro da fila: laranja. */
+.card.primeiro {
+  border-color: var(--laranja);
+  box-shadow: 0 2px 8px rgba(255, 122, 26, 0.25);
+}
+
+.card.primeiro .posicao {
+  background: var(--laranja);
+  color: #FFFFFF;
+}
+
+.card.primeiro .nome {
+  font-weight: 600;
+}
+
+.vazio {
+  padding: 32px 16px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* Classe usada pelo JS para esconder a mensagem de fila vazia. */
+.escondido {
+  display: none;
+}
+
+/* Esconde visualmente, mas mantém para leitores de tela (o label do input). */
+.sr-somente {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+/* ---------- Animação de entrada ---------- */
+/* Simples e discreta: o card sobe 8px enquanto aparece (200ms). */
+@keyframes entrada {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Só o card recém-adicionado recebe esta classe (veja o script.js). */
+.card.novo {
+  animation: entrada 0.2s ease-out;
+}
+
+/* Respeita quem configurou o aparelho para reduzir movimento. */
+@media (prefers-reduced-motion: reduce) {
+  .card.novo {
+    animation: none;
+  }
+}
+
+/* ---------- Telas maiores ---------- */
+/* Mobile-first: o base é o celular; aqui só ADICIONAMOS ajustes
+   para telas maiores (por isso min-width). */
+@media (min-width: 520px) {
+  .formulario {
+    flex-direction: row; /* campo e botão lado a lado */
+  }
+
+  button {
+    white-space: nowrap;
+  }
+}
