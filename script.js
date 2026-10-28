@@ -1,95 +1,129 @@
 /* ==========================================================
    1) ESTADO DO APP
-   A fila é só um array por enquanto. Quando você trocar por uma
-   API, o "estado" passa a viver no servidor, e o resto do código
-   quase não muda.
+   Antes a fila "morava" aqui, num array. Agora ela mora no BANCO
+   (via API). A variável "fila" virou só uma CÓPIA do que o servidor
+   respondeu, usada para desenhar a tela.
+   O proximoId sumiu: quem gera o id agora é o banco (IDENTITY).
    ========================================================== */
-const LIMITE_NOME = 30;
+const URL_API = "/api/fila";
+const INTERVALO_ATUALIZACAO = 5000; // de quantos em quantos ms buscar a fila de novo
 
-let fila = [];        // cada item: { id, nome }
-let proximoId = 1;    // contador que SÓ AUMENTA
-
-// Por que não usar fila.length + 1 para o id?
-// Porque o id precisa ser único. Se um dia você remover alguém do meio
-// da fila (ou o primeiro for atendido), o length diminui e o próximo id
-// repetiria um que já existiu. Um contador que só cresce nunca repete.
-// (Num banco de dados, essa é exatamente a função do AUTO_INCREMENT/IDENTITY.)
-
-// Guarda o id do card que acabou de entrar, só para animar ELE.
-// Como renderizar() redesenha tudo, sem isso todos os cards
-// animariam de novo a cada inclusão.
-let idRecemAdicionado = null;
+let fila = [];                 // cada item: { id, nome, minha }
+let carregou = false;          // já recebemos a fila pelo menos uma vez?
+let ocupado = false;           // tem um pedido em andamento? (evita toque duplo)
+let idRecemAdicionado = null;  // só para animar o card que acabou de entrar
 
 /* ==========================================================
    2) REFERÊNCIAS AO HTML
-   Buscamos os elementos uma vez só, no início, em vez de
-   procurar no DOM toda hora.
    ========================================================== */
 const formulario = document.getElementById("formulario");
 const campoNome = document.getElementById("campo-nome");
+const botaoEntrar = document.getElementById("botao-entrar");
 const mensagemErro = document.getElementById("mensagem-erro");
+const areaStatus = document.getElementById("area-status");
+const textoStatus = document.getElementById("texto-status");
+const botaoSair = document.getElementById("botao-sair");
 const listaFila = document.getElementById("lista-fila");
 const contador = document.getElementById("contador");
 const mensagemVazia = document.getElementById("mensagem-vazia");
 
 /* ==========================================================
-   3) LÓGICA (não mexe na tela, só nos dados)
+   3) CONVERSA COM A API
+   Toda a comunicação com o servidor passa por esta função.
+   Se um dia a URL ou o formato mudar, você arruma em um lugar só.
    ========================================================== */
 
-// Valida o nome já "limpo". Devolve uma mensagem de erro,
-// ou null se estiver tudo certo.
-function validarNome(nome) {
-  if (nome === "") {
-    return "Digite um nome para entrar na fila.";
+// Devolve { ok, status, dados }.
+//  - ok: true se o servidor respondeu com sucesso (códigos 2xx)
+//  - dados: o JSON da resposta (ex.: { fila: [...] } ou { codigo, erro })
+// Se a internet cair, o fetch lança erro: quem chamou trata com try/catch.
+async function chamarApi(metodo, corpo) {
+  const opcoes = { method: metodo, headers: {} };
+
+  if (corpo) {
+    opcoes.headers["Content-Type"] = "application/json";
+    opcoes.body = JSON.stringify(corpo);
   }
-  if (nome.length > LIMITE_NOME) {
-    return "O nome pode ter no máximo " + LIMITE_NOME + " caracteres.";
-  }
-  return null;
+
+  // O navegador envia o cookie do dispositivo sozinho (mesma origem).
+  // É assim que o servidor sabe QUEM está pedindo.
+  const resposta = await fetch(URL_API, opcoes);
+  const dados = await resposta.json().catch(function () { return {}; });
+
+  return { ok: resposta.ok, status: resposta.status, dados: dados };
 }
 
-// Cria a pessoa e coloca no FINAL do array (quem chega primeiro fica
-// na frente). Recebe só o nome: o id é responsabilidade desta função.
-//
-// PONTO DE TROCA PARA A API: depois você pode transformar em
-//   async function adicionarNaFila(nome) {
-//     const resposta = await fetch("/api/fila", { method: "POST", ... });
-//     const pessoa = await resposta.json();
-//     ...
-//   }
-// e o resto do código (validação, renderizar) continua igual.
-function adicionarNaFila(nome) {
-  const pessoa = { id: proximoId, nome: nome };
-  proximoId++;                  // incrementa DEPOIS de usar
-  fila.push(pessoa);
-  idRecemAdicionado = pessoa.id;
-  renderizar();                 // fila mudou -> redesenha
+// Busca a fila no servidor e redesenha SE algo mudou.
+async function carregarFila() {
+  try {
+    const { ok, dados } = await chamarApi("GET");
+    if (!ok) {
+      return;
+    }
+
+    // Comparar antes evita redesenhar a tela à toa a cada atualização.
+    const mudou = !carregou || JSON.stringify(dados.fila) !== JSON.stringify(fila);
+    fila = dados.fila;
+    carregou = true;
+
+    if (mudou) {
+      renderizar();
+    }
+  } catch (erro) {
+    // Sem conexão: mantém o que já está na tela e tenta de novo depois.
+  }
+}
+
+// Pede ao servidor para colocar o nome na fila.
+// Não validamos o nome aqui: o servidor é quem valida (tem uma única
+// fonte de verdade para as regras). Aqui só repassamos a resposta.
+async function adicionarNaFila(nome) {
+  const { ok, dados } = await chamarApi("POST", { nome: nome });
+
+  if (!ok) {
+    return { ok: false, codigo: dados.codigo, erro: dados.erro || "Não foi possível entrar na fila." };
+  }
+
+  idRecemAdicionado = dados.pessoa.id;
+  await carregarFila(); // busca a fila atualizada e redesenha
+  return { ok: true };
+}
+
+// Pede ao servidor para tirar ESTE dispositivo da fila.
+async function sairDaFila() {
+  const { ok, dados } = await chamarApi("DELETE");
+
+  // 404 "não está na fila" não é problema: o objetivo (não estar na fila)
+  // já foi cumprido. Só atualizamos a tela.
+  if (!ok && dados.codigo !== "NAO_ESTA_NA_FILA") {
+    return { ok: false, erro: dados.erro || "Não foi possível sair da fila." };
+  }
+
+  await carregarFila();
+  return { ok: true };
 }
 
 /* ==========================================================
    4) TELA
+   Mesma ideia de antes: a tela é um reflexo dos dados.
+   Mudou a fila? Chama renderizar().
    ========================================================== */
-
-// Apaga a lista e redesenha tudo a partir do array.
-// Ideia central: a TELA é um reflexo do ARRAY. Nunca editamos o HTML
-// "na mão" para adicionar um card; mudamos os dados e chamamos
-// renderizar(). Isso evita telas e dados fora de sincronia, e é o
-// mesmo princípio que frameworks como React usam.
 function renderizar() {
-  listaFila.innerHTML = ""; // aqui innerHTML só LIMPA (sem texto do usuário), então é seguro
+  listaFila.innerHTML = ""; // só limpa (sem texto do usuário), então é seguro
 
   fila.forEach(function (pessoa, indice) {
     const card = document.createElement("li");
     card.className = "card";
 
-    // A posição vem do ÍNDICE no array, não do id.
-    // O id é identidade (nunca muda); a posição é ordem (pode mudar).
-    // Se o #1 sair da fila, todo mundo sobe uma posição, mas os ids ficam.
+    // Posição = índice no array (ordem de chegada). O id é só identidade.
     if (indice === 0) {
       card.classList.add("primeiro");
     }
     if (pessoa.id === idRecemAdicionado) {
       card.classList.add("novo");
+    }
+    if (pessoa.minha) {
+      card.classList.add("meu");
     }
 
     const posicao = document.createElement("span");
@@ -98,35 +132,71 @@ function renderizar() {
 
     const nome = document.createElement("span");
     nome.className = "nome";
-    // textContent trata o conteúdo como TEXTO PURO. Se alguém digitar
-    // <script>..., aparece escrito na tela e não é executado.
-    // Com innerHTML, o navegador interpretaria como HTML (risco de XSS).
+    // textContent: o nome vem do banco, mas continua sendo texto de
+    // usuário. Tratar como TEXTO PURO evita injeção de HTML (XSS).
     nome.textContent = pessoa.nome;
 
     card.appendChild(posicao);
     card.appendChild(nome);
+
+    if (pessoa.minha) {
+      const etiqueta = document.createElement("span");
+      etiqueta.className = "etiqueta-voce";
+      etiqueta.textContent = "você";
+      card.appendChild(etiqueta);
+    }
+
     listaFila.appendChild(card);
   });
 
+  // A animação deve rodar uma vez só. Sem isso, o card ficaria
+  // animando de novo a cada atualização automática.
+  idRecemAdicionado = null;
+
   atualizarContador();
+  atualizarFormulario();
 }
 
-// Atualiza o contador e alterna entre lista e mensagem de "vazia".
 function atualizarContador() {
   const total = fila.length;
 
-  if (total === 1) {
+  if (!carregou) {
+    contador.textContent = "Carregando fila...";
+  } else if (total === 1) {
     contador.textContent = "1 pessoa na fila";
   } else {
     contador.textContent = total + " pessoas na fila";
   }
 
-  // classList.toggle(classe, true) adiciona; (classe, false) remove.
-  mensagemVazia.classList.toggle("escondido", total > 0);
+  // Só mostra "fila vazia" depois que o servidor confirmou que está vazia.
+  mensagemVazia.classList.toggle("escondido", !carregou || total > 0);
+}
+
+// Trava o formulário se este dispositivo já está na fila (ou se tem um
+// pedido em andamento) e mostra o aviso com o botão de sair.
+function atualizarFormulario() {
+  const minhaEntrada = fila.find(function (pessoa) {
+    return pessoa.minha;
+  });
+  const jaEntrou = Boolean(minhaEntrada);
+
+  campoNome.disabled = jaEntrou || ocupado;
+  botaoEntrar.disabled = jaEntrou || ocupado;
+  botaoSair.disabled = ocupado;
+
+  if (jaEntrou) {
+    textoStatus.textContent = "Você está na fila como " + minhaEntrada.nome + ".";
+  }
+  areaStatus.classList.toggle("escondido", !jaEntrou);
+}
+
+function definirOcupado(valor) {
+  ocupado = valor;
+  atualizarFormulario();
 }
 
 /* ==========================================================
-   5) EVENTOS (liga a tela à lógica)
+   5) EVENTOS
    ========================================================== */
 
 function mostrarErro(texto) {
@@ -139,30 +209,78 @@ function limparErro() {
   campoNome.classList.remove("invalido");
 }
 
-// Escutamos o "submit" do formulário (e não o "click" do botão):
-// assim o clique no botão e o Enter caem no mesmo código.
-formulario.addEventListener("submit", function (evento) {
-  evento.preventDefault(); // impede o navegador de recarregar a página
-
-  // trim() remove espaços das pontas: "  Ana  " vira "Ana".
-  const nome = campoNome.value.trim();
-
-  const erro = validarNome(nome);
-  if (erro) {
-    mostrarErro(erro);
-    campoNome.focus();
-    return; // para aqui: nada entra na fila
+// "submit" cobre o clique no botão e o Enter.
+formulario.addEventListener("submit", async function (evento) {
+  evento.preventDefault();
+  if (ocupado) {
+    return;
   }
 
-  limparErro();
-  adicionarNaFila(nome);
+  definirOcupado(true);
+  try {
+    const resultado = await adicionarNaFila(campoNome.value);
 
-  campoNome.value = "";
-  campoNome.focus(); // pronto para o próximo nome (bom no celular)
+    if (resultado.ok) {
+      limparErro();
+      campoNome.value = "";
+    } else {
+      mostrarErro(resultado.erro); // a mensagem vem pronta do servidor
+      if (resultado.codigo === "DISPOSITIVO_JA_NA_FILA") {
+        await carregarFila(); // a tela estava desatualizada: sincroniza
+      }
+    }
+  } catch (erro) {
+    mostrarErro("Sem conexão com o servidor. Tente de novo.");
+  } finally {
+    definirOcupado(false);
+    if (!campoNome.disabled) {
+      campoNome.focus(); // se deu erro, deixa pronto para corrigir
+    }
+  }
 });
 
-// Some com o erro assim que a pessoa volta a digitar.
+botaoSair.addEventListener("click", async function () {
+  if (ocupado) {
+    return;
+  }
+
+  definirOcupado(true);
+  try {
+    const resultado = await sairDaFila();
+    if (resultado.ok) {
+      limparErro();
+    } else {
+      mostrarErro(resultado.erro);
+    }
+  } catch (erro) {
+    mostrarErro("Sem conexão com o servidor. Tente de novo.");
+  } finally {
+    definirOcupado(false);
+  }
+});
+
 campoNome.addEventListener("input", limparErro);
 
-// Primeira renderização: mostra "0 pessoas" e a mensagem de fila vazia.
+/* ==========================================================
+   6) ATUALIZAÇÃO AUTOMÁTICA
+   Outras pessoas entram e saem pelos celulares delas. Como o servidor
+   não "empurra" novidades, o navegador PERGUNTA de tempos em tempos
+   (técnica chamada polling). Pausa quando a aba está escondida,
+   para não gastar bateria nem requisições à toa.
+   ========================================================== */
+setInterval(function () {
+  if (!document.hidden && !ocupado) {
+    carregarFila();
+  }
+}, INTERVALO_ATUALIZACAO);
+
+// Voltou para a aba? Atualiza na hora, sem esperar o próximo ciclo.
+document.addEventListener("visibilitychange", function () {
+  if (!document.hidden) {
+    carregarFila();
+  }
+});
+
+// Início: desenha o estado "carregando" e busca a fila de verdade.
 renderizar();
+carregarFila();

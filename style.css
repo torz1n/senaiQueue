@@ -119,6 +119,36 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/* Campo e botão travados (dispositivo já está na fila). */
+input:disabled,
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Área "Você está na fila como ..." + botão de sair. */
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--azul);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Botão secundário (só contorno): não compete com o botão principal. */
+.botao-sair {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--azul);
+  border: 2px solid var(--azul);
+  font-size: 0.95rem;
+}
+
 /* Mensagem de erro (único lugar onde o vermelho aparece). */
 .erro {
   min-height: 1.4em; /* reserva o espaço para a página não "pular" quando o erro aparece */
@@ -186,6 +216,18 @@ button:focus-visible {
 }
 
 .card.primeiro .nome {
+  font-weight: 600;
+}
+
+/* Card do próprio dispositivo: etiqueta azul discreta no canto direito. */
+.etiqueta-voce {
+  margin-left: auto;          /* empurra a etiqueta para a direita do card */
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--azul);
+  color: #FFFFFF;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 

@@ -14,7 +14,7 @@
     <header class="topo">
       <!-- A bolinha é só decoração (tema ping pong), por isso aria-hidden:
            leitores de tela vão ignorar. -->
-      <h1><span class="bolinha" aria-hidden="true"></span>SENAI Tênis de Mesa</h1>
+      <h1><span class="bolinha" aria-hidden="true"></span>Fila</h1>
       <p class="subtitulo">Digite seu nome para entrar na fila.</p>
     </header>
 
@@ -22,7 +22,7 @@
          o navegador já dispara o evento "submit" ao apertar Enter.
          Assim não precisamos escrever código extra para o Enter. -->
     <form id="formulario" class="formulario" novalidate>
-      <label for="campo-nome" class="sr-somente">Insira seu nome</label>
+      <label for="campo-nome" class="sr-somente">Seu nome</label>
       <input
         id="campo-nome"
         type="text"
@@ -30,12 +30,19 @@
         maxlength="30"
         autocomplete="off"
       >
-      <button type="submit">Entrar na fila</button>
+      <button id="botao-entrar" type="submit">Entrar na fila</button>
     </form>
 
     <!-- Mensagem de erro de validação. aria-live faz leitores de tela
          anunciarem o erro quando o texto aparecer. -->
     <p id="mensagem-erro" class="erro" aria-live="polite"></p>
+
+    <!-- Aparece depois que este dispositivo entrou na fila:
+         mostra o nome e oferece o botão para sair. -->
+    <div id="area-status" class="status escondido" aria-live="polite">
+      <span id="texto-status"></span>
+      <button id="botao-sair" type="button" class="botao-sair">Sair da fila</button>
+    </div>
 
     <section class="fila">
       <p id="contador" class="contador" aria-live="polite"></p>
