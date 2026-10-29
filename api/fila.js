@@ -101,6 +101,10 @@ async function entrarNaFila(req, res, dispositivoId) {
   if (nome === "") {
     return responderErro(res, 400, "NOME_VAZIO", "Digite um nome para entrar na fila.");
   }
+  if(/\d/.test(nome))
+  {
+    return responderErro(res, 400, "NOME_INVALIDO", "Não são aceitos números no campo de nome.")
+  }
   if (nome.length > LIMITE_NOME) {
     return responderErro(
       res, 400, "NOME_LONGO",
