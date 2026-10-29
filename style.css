@@ -1,18 +1,77 @@
 /* ==========================================================
-   VARIÁVEIS DE COR
-   Guardar as cores em variáveis (custom properties) evita repetir
-   códigos hexadecimais pelo arquivo. Se quiser mudar a paleta,
-   você altera em um lugar só.
+   ÍNDICE
+   1) Variáveis de cor (paleta clara e escura)
+   2) Base da página
+   3) Botões e campos (regras gerais)
+   4) Topo (título + botão de tema)
+   5) Botões específicos
+   6) Formulário e mensagens
+   7) Fila (cards)
+   8) Utilitários
+   9) Animações
+   10) Telas maiores
+   ========================================================== */
+
+/* ==========================================================
+   1) VARIÁVEIS DE COR (a paleta) + TEMA CLARO E ESCURO
+
+   Como funciona: o <html> tem o atributo data-theme="light" ou
+   data-theme="dark" (quem define é o mini-script do <head> e o botão).
+   O bloco ":root" abaixo é o tema CLARO (o padrão). O bloco
+   ':root[data-theme="dark"]' só troca os VALORES das mesmas variáveis.
+
+   Por isso o resto do CSS nunca escreve uma cor direto: ele usa
+   var(--nome-da-cor). Trocou o tema, trocaram as variáveis, e a página
+   inteira muda sozinha, sem repetir nenhuma regra.
    ========================================================== */
 :root {
-  --azul: #004B8D;      /* SENAI */
-  --laranja: #FF7A1A;   /* bolinha de ping pong */
-  --vermelho: #D62828;  /* raquete: só para erros */
+  color-scheme: light;
+
+  /* Paleta (modo claro) */
+  --azul: #0A58CA;               /* SENAI: título, estrutura */
+  --laranja: #FF6B00;            /* destaque/CTA: botão principal e #1 */
+  --ciano: #0EA5E9;              /* apoio: tags de status */
+  --vermelho: #D62828;           /* erro, alerta e ações de saída */
   --fundo: #F4F6F8;
   --card: #FFFFFF;
   --texto: #1F2933;
+  --texto-secundario: #52606D;
   --borda: #E3E8EE;
+
+  /* Variáveis derivadas (criadas para resolver contraste, ver abaixo) */
+  --acento-texto: var(--azul);     /* cor de texto pequeno em destaque */
+  --texto-sobre-destaque: #0F172A; /* texto escuro sobre laranja/ciano */
+  --sombra: rgba(31, 41, 51, 0.08);
 }
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Paleta (modo escuro) */
+  --azul: #2563EB;
+  --laranja: #FF7A1A;
+  --ciano: #38BDF8;
+  --vermelho: #EF4444;
+  --fundo: #0F172A;
+  --card: #1E293B;
+  --texto: #F8FAFC;
+  --texto-secundario: #94A3B8;
+  --borda: #334155;
+
+  /* No escuro, o texto pequeno em destaque usa o ciano, porque o azul
+     #2563EB sobre o fundo escuro fica com contraste baixo (cerca de
+     3,5:1, e o recomendado para texto pequeno é 4,5:1). */
+  --acento-texto: var(--ciano);
+  --sombra: rgba(0, 0, 0, 0.35);
+}
+
+/* Por que --texto-sobre-destaque é escuro nos dois temas? Texto BRANCO
+   sobre o laranja tem contraste ruim (cerca de 2,9:1). O escuro passa
+   fácil (acima de 6:1). Se preferir branco, troque só esta variável. */
+
+/* ==========================================================
+   2) BASE DA PÁGINA
+   ========================================================== */
 
 /* border-box faz width/padding se comportarem de forma previsível:
    o padding passa a ficar DENTRO da largura, não somado a ela. */
@@ -39,8 +98,59 @@ body {
   padding: 32px 16px 48px;
 }
 
-/* ---------- Topo ---------- */
+/* Troca de tema suave (200ms) nas peças que mudam de cor.
+   Fica aqui, junto da base, para valer para os componentes abaixo. */
+body,
+.card,
+input,
+.botao-tema,
+.posicao {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* ==========================================================
+   3) BOTÕES E CAMPOS (regras gerais)
+   Aqui só o que TODO botão tem em comum (tamanho de toque, fonte,
+   foco). A cor de cada tipo de botão fica na seção 5, em classes
+   próprias, para nenhum botão precisar "desfazer" o estilo de outro.
+   ========================================================== */
+input,
+button {
+  font: inherit;
+  border-radius: 12px;
+  min-height: 52px; /* altura mínima confortável para o toque do dedo */
+}
+
+button {
+  border: none;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 24px;
+}
+
+button:active {
+  transform: scale(0.98); /* feedback visual ao tocar */
+}
+
+button:focus-visible {
+  outline: 3px solid var(--acento-texto);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================
+   4) TOPO (título + botão de tema)
+   ========================================================== */
 .topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between; /* título à esquerda, botão de tema à direita */
+  gap: 12px;
   margin-bottom: 24px;
 }
 
@@ -63,21 +173,69 @@ h1 {
 
 .subtitulo {
   margin: 0;
-  opacity: 0.75;
+  color: var(--texto-secundario);
 }
 
-/* ---------- Formulário ---------- */
+/* Botão de alternar tema: redondo e discreto. É criado pelo script.js
+   e entra como filho do .topo. */
+.botao-tema {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--borda);
+  background: var(--card);
+  color: var(--texto);
+}
+
+/* Dois ícones dentro do botão, mostramos só um:
+   claro -> lua (leva ao escuro) / escuro -> sol (leva ao claro). */
+.icone-sol {
+  display: none;
+}
+
+:root[data-theme="dark"] .icone-sol {
+  display: block;
+}
+
+:root[data-theme="dark"] .icone-lua {
+  display: none;
+}
+
+/* ==========================================================
+   5) BOTÕES ESPECÍFICOS
+   ========================================================== */
+
+/* Botão principal ("Entrar na fila"): laranja = ação de destaque (CTA). */
+.botao-principal {
+  background: var(--laranja);
+  color: var(--texto-sobre-destaque);
+}
+
+/* Botão secundário (só contorno vermelho): sair é uma ação de
+   remoção, e não compete com o botão laranja principal. */
+.botao-sair {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--vermelho);
+  border: 2px solid var(--vermelho);
+  font-size: 0.95rem;
+}
+
+/* ==========================================================
+   6) FORMULÁRIO E MENSAGENS
+   ========================================================== */
 .formulario {
   display: flex;
   flex-direction: column; /* empilhado no celular */
   gap: 12px;
-}
-
-input,
-button {
-  font: inherit;
-  border-radius: 12px;
-  min-height: 52px; /* altura mínima confortável para o toque do dedo */
 }
 
 input {
@@ -90,9 +248,15 @@ input {
   font-size: 1rem;
 }
 
+/* O navegador deixa o placeholder muito apagado no escuro; fixamos a cor. */
+input::placeholder {
+  color: var(--texto-secundario);
+  opacity: 1;
+}
+
 input:focus {
   outline: none;
-  border-color: var(--azul);
+  border-color: var(--acento-texto);
 }
 
 /* Quando a validação falha, o JS adiciona esta classe no campo. */
@@ -100,30 +264,18 @@ input.invalido {
   border-color: var(--vermelho);
 }
 
-button {
-  border: none;
-  background: var(--azul);
-  color: #FFFFFF;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0 24px;
-}
-
-button:active {
-  transform: scale(0.98); /* feedback visual ao tocar */
-}
-
-button:focus-visible {
-  outline: 3px solid var(--laranja);
-  outline-offset: 2px;
-}
-
-/* Campo e botão travados (dispositivo já está na fila). */
-input:disabled,
-button:disabled {
+/* Campo travado (dispositivo já está na fila). */
+input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Mensagem de erro de validação. */
+.erro {
+  min-height: 1.4em; /* reserva o espaço para a página não "pular" quando o erro aparece */
+  margin: 8px 0 0;
+  color: var(--vermelho);
+  font-size: 0.9rem;
 }
 
 /* Área "Você está na fila como ..." + botão de sair. */
@@ -133,31 +285,14 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   margin-top: 12px;
-  color: var(--azul);
+  color: var(--acento-texto);
   font-weight: 600;
   font-size: 0.95rem;
 }
 
-/* Botão secundário (só contorno): não compete com o botão principal. */
-.botao-sair {
-  flex-shrink: 0;
-  min-height: 44px;
-  padding: 0 16px;
-  background: transparent;
-  color: var(--azul);
-  border: 2px solid var(--azul);
-  font-size: 0.95rem;
-}
-
-/* Mensagem de erro (único lugar onde o vermelho aparece). */
-.erro {
-  min-height: 1.4em; /* reserva o espaço para a página não "pular" quando o erro aparece */
-  margin: 8px 0 0;
-  color: var(--vermelho);
-  font-size: 0.9rem;
-}
-
-/* ---------- Fila ---------- */
+/* ==========================================================
+   7) FILA (cards)
+   ========================================================== */
 .fila {
   margin-top: 16px;
 }
@@ -165,7 +300,7 @@ button:disabled {
 .contador {
   margin: 0 0 12px;
   font-weight: 600;
-  color: var(--azul);
+  color: var(--acento-texto);
 }
 
 .lista-fila {
@@ -185,7 +320,7 @@ button:disabled {
   background: var(--card);
   border: 1px solid var(--borda);
   border-radius: 14px;
-  box-shadow: 0 1px 3px rgba(31, 41, 51, 0.08);
+  box-shadow: 0 1px 3px var(--sombra);
 }
 
 .posicao {
@@ -194,7 +329,7 @@ button:disabled {
   padding: 6px 10px;
   border-radius: 10px;
   background: var(--fundo);
-  color: var(--azul);
+  color: var(--acento-texto);
   font-weight: 700;
   text-align: center;
 }
@@ -207,39 +342,47 @@ button:disabled {
 /* Destaque do primeiro da fila: laranja. */
 .card.primeiro {
   border-color: var(--laranja);
-  box-shadow: 0 2px 8px rgba(255, 122, 26, 0.25);
+  /* color-mix cria o brilho laranja a partir da própria variável,
+     então ele acompanha o tema sem precisar de outra cor. */
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--laranja) 30%, transparent);
 }
 
 .card.primeiro .posicao {
   background: var(--laranja);
-  color: #FFFFFF;
+  color: var(--texto-sobre-destaque);
 }
 
 .card.primeiro .nome {
   font-weight: 600;
 }
 
-/* Card do próprio dispositivo: etiqueta azul discreta no canto direito. */
+/* Etiqueta "você": ciano = tag de status. */
 .etiqueta-voce {
   margin-left: auto;          /* empurra a etiqueta para a direita do card */
   flex-shrink: 0;
   padding: 2px 10px;
   border-radius: 999px;
-  background: var(--azul);
-  color: #FFFFFF;
+  background: var(--ciano);
+  color: var(--texto-sobre-destaque);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .vazio {
   padding: 32px 16px;
   text-align: center;
-  opacity: 0.7;
+  color: var(--texto-secundario);
 }
 
-/* Classe usada pelo JS para esconder a mensagem de fila vazia. */
+/* ==========================================================
+   8) UTILITÁRIOS
+   ========================================================== */
+
+/* Classe usada pelo JS para esconder elementos. O !important garante
+   que ela vença regras como ".status { display: flex }", sem depender
+   da ordem em que as regras aparecem no arquivo. */
 .escondido {
-  display: none;
+  display: none !important;
 }
 
 /* Esconde visualmente, mas mantém para leitores de tela (o label do input). */
@@ -248,12 +391,15 @@ button:disabled {
   width: 1px;
   height: 1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
-/* ---------- Animação de entrada ---------- */
-/* Simples e discreta: o card sobe 8px enquanto aparece (200ms). */
+/* ==========================================================
+   9) ANIMAÇÕES
+   ========================================================== */
+
+/* Entrada do card: simples e discreta, sobe 8px enquanto aparece. */
 @keyframes entrada {
   from {
     opacity: 0;
@@ -275,11 +421,21 @@ button:disabled {
   .card.novo {
     animation: none;
   }
+
+  body,
+  .card,
+  input,
+  .botao-tema,
+  .posicao {
+    transition: none;
+  }
 }
 
-/* ---------- Telas maiores ---------- */
-/* Mobile-first: o base é o celular; aqui só ADICIONAMOS ajustes
-   para telas maiores (por isso min-width). */
+/* ==========================================================
+   10) TELAS MAIORES
+   Mobile-first: o base é o celular; aqui só ADICIONAMOS ajustes
+   para telas maiores (por isso min-width).
+   ========================================================== */
 @media (min-width: 520px) {
   .formulario {
     flex-direction: row; /* campo e botão lado a lado */
