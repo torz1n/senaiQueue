@@ -5,17 +5,56 @@
   <!-- Essa meta tag é essencial no mobile-first: sem ela o celular
        mostra a página "encolhida", como se fosse um site de desktop. -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Avisa ao navegador que a página tem tema claro e escuro, para ele
+       adaptar também as partes que ele mesmo desenha (barra de rolagem,
+       preenchimento automático etc.). -->
+  <meta name="color-scheme" content="light dark">
+
+  <!-- Cor da barra do navegador no celular. O script.js atualiza este
+       valor sempre que o tema muda. -->
+  <meta name="theme-color" content="#F4F6F8">
+
   <title>Fila</title>
+
+  <!-- ESCOLHA DO TEMA (precisa ficar aqui no <head>, antes do CSS):
+       este mini-script roda ANTES de a página ser desenhada e define se
+       começamos no claro ou no escuro. Se ele ficasse só no script.js
+       (que carrega no fim do <body>), a pessoa veria a tela clara por
+       um instante antes de virar escura (um "piscar" feio).
+       Ordem de decisão: 1) o que a pessoa escolheu no botão e ficou
+       salvo; 2) se nunca escolheu, o tema do celular/computador dela. -->
+  <script>
+    (function () {
+      let tema = null;
+      try {
+        tema = localStorage.getItem("tema"); // mesma chave usada no script.js
+      } catch (erro) {
+        // localStorage bloqueado: segue sem a preferência salva.
+      }
+      if (tema !== "light" && tema !== "dark") {
+        tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", tema);
+    })();
+  </script>
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="app">
 
     <header class="topo">
-      <!-- A bolinha é só decoração (tema ping pong), por isso aria-hidden:
-           leitores de tela vão ignorar. -->
-      <h1><span class="bolinha" aria-hidden="true"></span>Fila</h1>
-      <p class="subtitulo">Digite seu nome para entrar na fila.</p>
+      <div>
+        <!-- A bolinha é só decoração (tema ping pong), por isso aria-hidden:
+             leitores de tela vão ignorar. -->
+        <h1><span class="bolinha" aria-hidden="true"></span>Fila</h1>
+        <p class="subtitulo">Digite seu nome para entrar na fila.</p>
+      </div>
+
+      <!-- O botão de alternar tema NÃO está escrito aqui de propósito:
+           ele é criado pelo script.js (seção 7) e colocado dentro deste
+           cabeçalho, no canto direito. -->
     </header>
 
     <!-- Usamos <form> de propósito: com um botão type="submit" dentro,
@@ -30,7 +69,7 @@
         maxlength="30"
         autocomplete="off"
       >
-      <button id="botao-entrar" type="submit">Entrar na fila</button>
+      <button id="botao-entrar" class="botao-principal" type="submit">Entrar na fila</button>
     </form>
 
     <!-- Mensagem de erro de validação. aria-live faz leitores de tela
