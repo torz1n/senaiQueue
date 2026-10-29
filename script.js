@@ -281,6 +281,102 @@ document.addEventListener("visibilitychange", function () {
   }
 });
 
-// Início: desenha o estado "carregando" e busca a fila de verdade.
+/* ==========================================================
+   7) INÍCIO DO APP
+   Fica ANTES do tema de propósito: o essencial (mostrar a fila) não
+   pode depender de um detalhe visual. Se algo no tema falhar, o
+   script para ali, mas a fila já está funcionando.
+   ========================================================== */
+// Desenha o estado "carregando" e busca a fila de verdade.
 renderizar();
 carregarFila();
+
+/* ==========================================================
+   8) TEMA CLARO / ESCURO
+   O tema inicial já foi escolhido pelo mini-script do <head> (para a
+   tela não "piscar"). Aqui ficam: a CRIAÇÃO do botão dentro do
+   cabeçalho, a troca de tema e o salvamento da escolha.
+   ========================================================== */
+const CHAVE_TEMA = "tema"; // mesma chave usada no mini-script do index.html
+const metaCorTema = document.querySelector('meta[name="theme-color"]');
+
+// Ícones do botão: uma lua e um sol. O CSS mostra só um dos dois,
+// conforme o tema (lua no claro, sol no escuro).
+// Aqui o innerHTML é seguro porque o texto é FIXO, escrito por nós.
+// A regra "não usar innerHTML" vale para texto que vem do USUÁRIO
+// (como o nome digitado), que é o que o textContent protege.
+const ICONES_TEMA =
+  '<svg class="icone-lua" viewBox="0 0 24 24" width="22" height="22" fill="none" ' +
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>' +
+  '<svg class="icone-sol" viewBox="0 0 24 24" width="22" height="22" fill="none" ' +
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true">' +
+    '<circle cx="12" cy="12" r="5"/>' +
+    '<line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>' +
+    '<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>' +
+    '<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>' +
+    '<line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>' +
+    '<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>' +
+    '<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+
+// Cria o botão e o coloca no cabeçalho (<header class="topo">).
+// Por ser filho do cabeçalho, que é um flex com "space-between",
+// ele fica sozinho no canto direito, sem precisar de CSS novo.
+function criarBotaoTema() {
+  const botao = document.createElement("button");
+  botao.id = "botao-tema";
+  botao.className = "botao-tema";
+  botao.type = "button"; // garante que nunca seja tratado como botão de "enviar"
+  botao.innerHTML = ICONES_TEMA;
+
+  document.querySelector(".topo").appendChild(botao);
+  return botao;
+}
+
+const botaoTema = criarBotaoTema();
+
+// Lê o tema que está valendo agora direto do <html>.
+// O HTML é a "fonte da verdade": não guardamos o tema numa variável
+// separada, para não ter dois lugares que podem discordar.
+function temaAtual() {
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+}
+
+// Aplica o tema: o CSS reage sozinho ao atributo data-theme, então
+// trocar de tema é só mudar este atributo.
+function aplicarTema(tema) {
+  document.documentElement.setAttribute("data-theme", tema);
+
+  // O botão muda de função a cada clique, então o texto para
+  // leitores de tela (e o balão ao passar o mouse) acompanha.
+  const texto = tema === "dark" ? "Ativar modo claro" : "Ativar modo escuro";
+  botaoTema.setAttribute("aria-label", texto);
+  botaoTema.title = texto;
+
+  // Pinta a barra do navegador do celular com a cor de fundo do tema.
+  // Lemos a cor da variável do CSS, assim não repetimos hexadecimais aqui.
+  if (metaCorTema) {
+    const corFundo = getComputedStyle(document.documentElement).getPropertyValue("--fundo").trim();
+    if (corFundo) {
+      metaCorTema.setAttribute("content", corFundo);
+    }
+  }
+}
+
+botaoTema.addEventListener("click", function () {
+  const novoTema = temaAtual() === "dark" ? "light" : "dark";
+  aplicarTema(novoTema);
+
+  // Salva a escolha neste aparelho. Na próxima visita (ou ao recarregar),
+  // o mini-script do <head> lê isso e já abre no tema escolhido.
+  try {
+    localStorage.setItem(CHAVE_TEMA, novoTema);
+  } catch (erro) {
+    // localStorage bloqueado: o tema vale só até fechar a página.
+  }
+});
+
+// Sincroniza o botão e a barra do navegador com o tema inicial.
+aplicarTema(temaAtual());
