@@ -282,60 +282,47 @@ document.addEventListener("visibilitychange", function () {
 });
 
 /* ==========================================================
-   7) INÍCIO DO APP
-   Fica ANTES do tema de propósito: o essencial (mostrar a fila) não
-   pode depender de um detalhe visual. Se algo no tema falhar, o
-   script para ali, mas a fila já está funcionando.
-   ========================================================== */
-// Desenha o estado "carregando" e busca a fila de verdade.
-renderizar();
-carregarFila();
-
-/* ==========================================================
-   8) TEMA CLARO / ESCURO
+   7) TEMA CLARO / ESCURO
    O tema inicial já foi escolhido pelo mini-script do <head> (para a
-   tela não "piscar"). Aqui ficam: a CRIAÇÃO do botão dentro do
+   tela não "piscar"). Aqui ficam: a CRIAÇÃO do interruptor dentro do
    cabeçalho, a troca de tema e o salvamento da escolha.
    ========================================================== */
 const CHAVE_TEMA = "tema"; // mesma chave usada no mini-script do index.html
 const metaCorTema = document.querySelector('meta[name="theme-color"]');
 
-// Ícones do botão: uma lua e um sol. O CSS mostra só um dos dois,
-// conforme o tema (lua no claro, sol no escuro).
+// HTML do interruptor de tema (design do Uiverse.io, autor: m1her).
+// É um <label> com um checkbox escondido: o checkbox dá suporte ao teclado
+// e aos leitores de tela (role="switch": marcado = modo escuro ligado), e
+// o desenho da etiqueta laranja é só decoração (aria-hidden).
 // Aqui o innerHTML é seguro porque o texto é FIXO, escrito por nós.
 // A regra "não usar innerHTML" vale para texto que vem do USUÁRIO
 // (como o nome digitado), que é o que o textContent protege.
-const ICONES_TEMA =
-  '<svg class="icone-lua" viewBox="0 0 24 24" width="22" height="22" fill="none" ' +
-    'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
-    'stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>' +
-  '<svg class="icone-sol" viewBox="0 0 24 24" width="22" height="22" fill="none" ' +
-    'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
-    'stroke-linejoin="round" aria-hidden="true">' +
-    '<circle cx="12" cy="12" r="5"/>' +
-    '<line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>' +
-    '<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>' +
-    '<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>' +
-    '<line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>' +
-    '<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>' +
-    '<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+const HTML_SELETOR_TEMA =
+  '<input type="checkbox" class="seletor-entrada sr-somente" role="switch" ' +
+    'aria-label="Modo escuro" autocomplete="off">' +
+  '<span class="seletor-corpo" aria-hidden="true">' +
+    '<span class="seletor-bolinha"></span>' +
+    '<span class="seletor-trilho">' +
+      '<span class="seletor-face"><span class="seletor-bico"></span></span>' +
+    '</span>' +
+    '<span class="seletor-traco"></span>' +
+  '</span>';
 
-// Cria o botão e o coloca no cabeçalho (<header class="topo">).
+// Cria o interruptor e o coloca no cabeçalho (<header class="topo">).
 // Por ser filho do cabeçalho, que é um flex com "space-between",
 // ele fica sozinho no canto direito, sem precisar de CSS novo.
-function criarBotaoTema() {
-  const botao = document.createElement("button");
-  botao.id = "botao-tema";
-  botao.className = "botao-tema";
-  botao.type = "button"; // garante que nunca seja tratado como botão de "enviar"
-  botao.innerHTML = ICONES_TEMA;
+// Devolve o checkbox, que é o elemento que o resto do código usa.
+function criarSeletorTema() {
+  const seletor = document.createElement("label");
+  seletor.className = "seletor-tema";
+  seletor.title = "Alternar entre modo claro e escuro";
+  seletor.innerHTML = HTML_SELETOR_TEMA;
 
-  document.querySelector(".topo").appendChild(botao);
-  return botao;
+  document.querySelector(".topo").appendChild(seletor);
+  return seletor.querySelector("input");
 }
 
-const botaoTema = criarBotaoTema();
+const entradaTema = criarSeletorTema();
 
 // Lê o tema que está valendo agora direto do <html>.
 // O HTML é a "fonte da verdade": não guardamos o tema numa variável
@@ -349,11 +336,10 @@ function temaAtual() {
 function aplicarTema(tema) {
   document.documentElement.setAttribute("data-theme", tema);
 
-  // O botão muda de função a cada clique, então o texto para
-  // leitores de tela (e o balão ao passar o mouse) acompanha.
-  const texto = tema === "dark" ? "Ativar modo claro" : "Ativar modo escuro";
-  botaoTema.setAttribute("aria-label", texto);
-  botaoTema.title = texto;
+  // Mantém o checkbox em sincronia: marcado = modo escuro.
+  // (Mudar "checked" por código NÃO dispara o evento "change", então
+  // não existe risco de um loop entre o checkbox e esta função.)
+  entradaTema.checked = tema === "dark";
 
   // Pinta a barra do navegador do celular com a cor de fundo do tema.
   // Lemos a cor da variável do CSS, assim não repetimos hexadecimais aqui.
@@ -365,8 +351,10 @@ function aplicarTema(tema) {
   }
 }
 
-botaoTema.addEventListener("click", function () {
-  const novoTema = temaAtual() === "dark" ? "light" : "dark";
+// "change" dispara quando a pessoa alterna o interruptor (por toque,
+// clique ou teclado, com Espaço). O estado novo já está em .checked.
+entradaTema.addEventListener("change", function () {
+  const novoTema = entradaTema.checked ? "dark" : "light";
   aplicarTema(novoTema);
 
   // Salva a escolha neste aparelho. Na próxima visita (ou ao recarregar),
@@ -380,3 +368,7 @@ botaoTema.addEventListener("click", function () {
 
 // Sincroniza o botão e a barra do navegador com o tema inicial.
 aplicarTema(temaAtual());
+
+// Início: desenha o estado "carregando" e busca a fila de verdade.
+renderizar();
+carregarFila();
