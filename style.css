@@ -1,19 +1,5 @@
 /* ==========================================================
-   ÍNDICE
-   1) Variáveis de cor (paleta clara e escura)
-   2) Base da página
-   3) Botões e campos (regras gerais)
-   4) Topo (título + botão de tema)
-   5) Botões específicos
-   6) Formulário e mensagens
-   7) Fila (cards)
-   8) Utilitários
-   9) Animações
-   10) Telas maiores
-   ========================================================== */
-
-/* ==========================================================
-   1) VARIÁVEIS DE COR (a paleta) + TEMA CLARO E ESCURO
+   VARIÁVEIS DE COR (a paleta) + TEMA CLARO E ESCURO
 
    Como funciona: o <html> tem o atributo data-theme="light" ou
    data-theme="dark" (quem define é o mini-script do <head> e o botão).
@@ -21,7 +7,7 @@
    ':root[data-theme="dark"]' só troca os VALORES das mesmas variáveis.
 
    Por isso o resto do CSS nunca escreve uma cor direto: ele usa
-   var(--nome-da-cor). Trocou o tema, trocaram as variáveis, e a página
+   var(--nome). Trocou o tema, trocaram as variáveis, e a página
    inteira muda sozinha, sem repetir nenhuma regra.
    ========================================================== */
 :root {
@@ -39,7 +25,7 @@
   --borda: #E3E8EE;
 
   /* Variáveis derivadas (criadas para resolver contraste, ver abaixo) */
-  --acento-texto: var(--azul);     /* cor de texto pequeno em destaque */
+  --acento-texto: var(--azul);   /* cor de texto pequeno em destaque */
   --texto-sobre-destaque: #0F172A; /* texto escuro sobre laranja/ciano */
   --sombra: rgba(31, 41, 51, 0.08);
 }
@@ -69,10 +55,6 @@
    sobre o laranja tem contraste ruim (cerca de 2,9:1). O escuro passa
    fácil (acima de 6:1). Se preferir branco, troque só esta variável. */
 
-/* ==========================================================
-   2) BASE DA PÁGINA
-   ========================================================== */
-
 /* border-box faz width/padding se comportarem de forma previsível:
    o padding passa a ficar DENTRO da largura, não somado a ela. */
 *,
@@ -98,54 +80,7 @@ body {
   padding: 32px 16px 48px;
 }
 
-/* Troca de tema suave (200ms) nas peças que mudam de cor.
-   Fica aqui, junto da base, para valer para os componentes abaixo. */
-body,
-.card,
-input,
-.botao-tema,
-.posicao {
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-/* ==========================================================
-   3) BOTÕES E CAMPOS (regras gerais)
-   Aqui só o que TODO botão tem em comum (tamanho de toque, fonte,
-   foco). A cor de cada tipo de botão fica na seção 5, em classes
-   próprias, para nenhum botão precisar "desfazer" o estilo de outro.
-   ========================================================== */
-input,
-button {
-  font: inherit;
-  border-radius: 12px;
-  min-height: 52px; /* altura mínima confortável para o toque do dedo */
-}
-
-button {
-  border: none;
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0 24px;
-}
-
-button:active {
-  transform: scale(0.98); /* feedback visual ao tocar */
-}
-
-button:focus-visible {
-  outline: 3px solid var(--acento-texto);
-  outline-offset: 2px;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ==========================================================
-   4) TOPO (título + botão de tema)
-   ========================================================== */
+/* ---------- Topo ---------- */
 .topo {
   display: flex;
   align-items: flex-start;
@@ -176,66 +111,180 @@ h1 {
   color: var(--texto-secundario);
 }
 
-/* Botão de alternar tema: redondo e discreto. É criado pelo script.js
-   e entra como filho do .topo. */
-.botao-tema {
+/* ----------------------------------------------------------
+   SELETOR DE TEMA: interruptor em forma de etiqueta laranja.
+   Design do Uiverse.io (autor: m1her), convertido de Tailwind para
+   CSS puro e ligado às variáveis da nossa paleta. Ele é criado pelo
+   script.js e entra como filho do .topo.
+
+   O desenho original tem 192x108px. Para caber no cabeçalho, o
+   .seletor-corpo é desenhado nesse tamanho e reduzido à metade com
+   transform: scale(0.5). Como o transform não muda o espaço que o
+   elemento ocupa no layout, o .seletor-tema (a caixa de fora) já
+   reserva o tamanho reduzido: 96x54px.
+
+   O visual depende só do atributo data-theme, como o resto da página:
+   no modo escuro o trilho vira de lado (scaleX(-1)). O checkbox
+   escondido existe para o teclado e para leitores de tela.
+   ---------------------------------------------------------- */
+.seletor-tema {
+  --seletor-contorno: var(--texto-sobre-destaque); /* azul-marinho dos contornos */
+
+  position: relative;
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--borda);
-  background: var(--card);
-  color: var(--texto);
-}
-
-/* Dois ícones dentro do botão, mostramos só um:
-   claro -> lua (leva ao escuro) / escuro -> sol (leva ao claro). */
-.icone-sol {
-  display: none;
-}
-
-:root[data-theme="dark"] .icone-sol {
   display: block;
+  width: 96px;
+  height: 54px;
+  cursor: pointer;
 }
 
-:root[data-theme="dark"] .icone-lua {
-  display: none;
+/* No modo escuro, o azul-marinho dos contornos some contra o fundo escuro.
+   Por isso, nesse tema, os contornos usam o cinza-azulado do texto
+   secundário, e o desenho continua legível. */
+:root[data-theme="dark"] .seletor-tema {
+  --seletor-contorno: var(--texto-secundario);
 }
 
-/* ==========================================================
-   5) BOTÕES ESPECÍFICOS
-   ========================================================== */
-
-/* Botão principal ("Entrar na fila"): laranja = ação de destaque (CTA). */
-.botao-principal {
-  background: var(--laranja);
-  color: var(--texto-sobre-destaque);
+/* O checkbox fica escondido só visualmente (classe .sr-somente), e NÃO
+   com display: none, porque assim ele continua recebendo o foco do
+   teclado. Aqui apenas anulamos o estilo geral de "input". */
+.seletor-entrada {
+  min-height: 0;
+  padding: 0;
+  border: 0;
 }
 
-/* Botão secundário (só contorno vermelho): sair é uma ação de
-   remoção, e não compete com o botão laranja principal. */
-.botao-sair {
+.seletor-corpo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 192px;
+  height: 108px;
+  padding: 0 8px;
+  border: 4px solid var(--seletor-contorno);
+  border-radius: 12px;
+  background: var(--card);
+  transform: scale(0.5);
+  transform-origin: top left;
+  transition: background-color 0.2s ease; /* a cor do trilho acompanha o tema */
+}
+
+/* Anel de foco para quem navega pelo teclado. Está no dobro do tamanho
+   normal (6px e 4px) porque o corpo é reduzido à metade. */
+.seletor-entrada:focus-visible + .seletor-corpo {
+  outline: 6px solid var(--acento-texto);
+  outline-offset: 4px;
+}
+
+.seletor-bolinha {
   flex-shrink: 0;
-  min-height: 44px;
-  padding: 0 16px;
-  background: transparent;
-  color: var(--vermelho);
-  border: 2px solid var(--vermelho);
-  font-size: 0.95rem;
+  width: 24px;
+  height: 24px;
+  border: 4px solid var(--seletor-contorno);
+  border-radius: 50%;
 }
 
-/* ==========================================================
-   6) FORMULÁRIO E MENSAGENS
-   ========================================================== */
+.seletor-traco {
+  flex-shrink: 0;
+  width: 24px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--seletor-contorno);
+}
+
+/* O trilho é a peça que vira de lado quando o tema muda. */
+.seletor-trilho {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 4px solid var(--seletor-contorno);
+  border-radius: 4px;
+  transition: transform 0.25s ease;
+}
+
+:root[data-theme="dark"] .seletor-trilho {
+  transform: scaleX(-1);
+}
+
+/* A "etiqueta" laranja é desenhada com 4 peças: a face (fundo laranja),
+   o bico (triângulo de cima) e dois lados inclinados com skewY. */
+.seletor-face {
+  position: relative;
+  display: block; /* é um <span>: sem isso, width e height seriam ignorados */
+  width: 100%;
+  height: 100%;
+  background: var(--laranja);
+}
+
+/* Triângulo feito só com bordas: largura e altura 0, e as bordas
+   laterais transparentes formam a ponta. */
+.seletor-bico {
+  position: relative;
+  z-index: 20;
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 24px solid transparent;
+  border-right: 24px solid transparent;
+  border-top: 20px solid var(--seletor-contorno);
+}
+
+/* Triângulo menor, em laranja mais escuro, dentro do bico. */
+.seletor-bico::after {
+  content: "";
+  position: absolute;
+  top: -20px;
+  left: -18px;
+  width: 0;
+  height: 0;
+  border-left: 18px solid transparent;
+  border-right: 18px solid transparent;
+  border-top: 15px solid color-mix(in srgb, var(--laranja) 94%, black);
+}
+
+/* Lado esquerdo da etiqueta. */
+.seletor-face::before {
+  content: "";
+  position: absolute;
+  z-index: 10;
+  top: 9px;
+  left: 0;
+  width: 24px;
+  height: 36px;
+  background: var(--laranja);
+  border-right: 2px solid var(--seletor-contorno);
+  border-bottom: 4px solid var(--seletor-contorno);
+  transform: skewY(39deg);
+}
+
+/* Lado direito da etiqueta (mais escuro, para dar volume). */
+.seletor-face::after {
+  content: "";
+  position: absolute;
+  z-index: 10;
+  top: 9px;
+  left: 24px;
+  width: 25px;
+  height: 36px;
+  background: color-mix(in srgb, var(--laranja) 81%, black);
+  border-left: 2px solid var(--seletor-contorno);
+  border-right: 4px solid var(--seletor-contorno);
+  border-bottom: 4px solid var(--seletor-contorno);
+  transform: skewY(-39deg);
+}
+
+/* ---------- Formulário ---------- */
 .formulario {
   display: flex;
   flex-direction: column; /* empilhado no celular */
   gap: 12px;
+}
+
+input,
+button {
+  font: inherit;
+  border-radius: 12px;
+  min-height: 52px; /* altura mínima confortável para o toque do dedo */
 }
 
 input {
@@ -264,18 +313,31 @@ input.invalido {
   border-color: var(--vermelho);
 }
 
-/* Campo travado (dispositivo já está na fila). */
-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* Botão principal ("Entrar na fila"): laranja = ação de destaque (CTA). */
+button {
+  border: none;
+  background: var(--laranja);
+  color: var(--texto-sobre-destaque);
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 24px;
 }
 
-/* Mensagem de erro de validação. */
-.erro {
-  min-height: 1.4em; /* reserva o espaço para a página não "pular" quando o erro aparece */
-  margin: 8px 0 0;
-  color: var(--vermelho);
-  font-size: 0.9rem;
+button:active {
+  transform: scale(0.98); /* feedback visual ao tocar */
+}
+
+button:focus-visible {
+  outline: 3px solid var(--acento-texto);
+  outline-offset: 2px;
+}
+
+/* Campo e botão travados (dispositivo já está na fila). */
+input:disabled,
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Área "Você está na fila como ..." + botão de sair. */
@@ -290,9 +352,27 @@ input:disabled {
   font-size: 0.95rem;
 }
 
-/* ==========================================================
-   7) FILA (cards)
-   ========================================================== */
+/* Botão secundário (só contorno vermelho): sair é uma ação de
+   remoção, e não compete com o botão laranja principal. */
+.botao-sair {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--vermelho);
+  border: 2px solid var(--vermelho);
+  font-size: 0.95rem;
+}
+
+/* Mensagem de erro de validação. */
+.erro {
+  min-height: 1.4em; /* reserva o espaço para a página não "pular" quando o erro aparece */
+  margin: 8px 0 0;
+  color: var(--vermelho);
+  font-size: 0.9rem;
+}
+
+/* ---------- Fila ---------- */
 .fila {
   margin-top: 16px;
 }
@@ -374,15 +454,9 @@ input:disabled {
   color: var(--texto-secundario);
 }
 
-/* ==========================================================
-   8) UTILITÁRIOS
-   ========================================================== */
-
-/* Classe usada pelo JS para esconder elementos. O !important garante
-   que ela vença regras como ".status { display: flex }", sem depender
-   da ordem em que as regras aparecem no arquivo. */
+/* Classe usada pelo JS para esconder elementos. */
 .escondido {
-  display: none !important;
+  display: none;
 }
 
 /* Esconde visualmente, mas mantém para leitores de tela (o label do input). */
@@ -391,13 +465,18 @@ input:disabled {
   width: 1px;
   height: 1px;
   overflow: hidden;
-  clip-path: inset(50%);
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
 }
 
-/* ==========================================================
-   9) ANIMAÇÕES
-   ========================================================== */
+/* ---------- Animações ---------- */
+/* Troca de tema suave (200ms) nas peças que mudam de cor. */
+body,
+.card,
+input,
+.posicao {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
 
 /* Entrada do card: simples e discreta, sobe 8px enquanto aparece. */
 @keyframes entrada {
@@ -425,17 +504,16 @@ input:disabled {
   body,
   .card,
   input,
-  .botao-tema,
-  .posicao {
+  .posicao,
+  .seletor-corpo,
+  .seletor-trilho {
     transition: none;
   }
 }
 
-/* ==========================================================
-   10) TELAS MAIORES
-   Mobile-first: o base é o celular; aqui só ADICIONAMOS ajustes
-   para telas maiores (por isso min-width).
-   ========================================================== */
+/* ---------- Telas maiores ---------- */
+/* Mobile-first: o base é o celular; aqui só ADICIONAMOS ajustes
+   para telas maiores (por isso min-width). */
 @media (min-width: 520px) {
   .formulario {
     flex-direction: row; /* campo e botão lado a lado */
