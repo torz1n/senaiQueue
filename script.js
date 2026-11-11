@@ -5,9 +5,9 @@
    respondeu, usada para desenhar a tela.
    O proximoId sumiu: quem gera o id agora é o banco (IDENTITY).
    ========================================================== */
-const URL_API = "/api/fila";
+const URL_API = "/api/fila"; 
 const INTERVALO_ATUALIZACAO = 5000; // de quantos em quantos ms buscar a fila de novo
-
+//* SE UM DEPLOY FOR FEITO E TIVER NOMES DA FILA, NAO ESQUECER DE DAR DELETE COM WHERE NO BANCO!
 let fila = [];                 // cada item: { id, nome, minha }
 let carregou = false;          // já recebemos a fila pelo menos uma vez?
 let ocupado = false;           // tem um pedido em andamento? (evita toque duplo)
