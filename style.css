@@ -345,11 +345,25 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap; /* com dois botões, em tela estreita eles descem para a linha de baixo */
   gap: 12px;
   margin-top: 12px;
   color: var(--acento-texto);
   font-weight: 600;
   font-size: 0.95rem;
+}
+
+/* O texto ocupa o espaço que sobrar; se não couber ao lado dos botões, eles quebram de linha. */
+.status > span {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+/* Grupo dos botões "Já joguei" e "Sair da fila". */
+.acoes {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 /* Botão secundário (só contorno vermelho): sair é uma ação de
@@ -362,6 +376,28 @@ button:disabled {
   color: var(--vermelho);
   border: 2px solid var(--vermelho);
   font-size: 0.95rem;
+}
+
+/* Botão secundário "Já joguei" (só contorno): passar a vez é uma ação
+   de apoio, então não compete com o laranja do "Entrar na fila" nem
+   com o vermelho do "Sair". Usa --acento-texto (azul no claro, ciano
+   no escuro) para manter contraste nos dois temas. */
+.botao-fim {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--acento-texto);
+  border: 2px solid var(--acento-texto);
+  font-size: 0.95rem;
+}
+
+/* Aviso do que aconteceu (não é erro, por isso não usa o vermelho). */
+.aviso {
+  min-height: 1.4em; /* reserva o espaço: a página não "pula" quando o aviso aparece */
+  margin: 8px 0 0;
+  color: var(--texto-secundario);
+  font-size: 0.9rem;
 }
 
 /* Mensagem de erro de validação. */
