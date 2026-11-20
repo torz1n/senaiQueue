@@ -2,10 +2,11 @@
 // API DA FILA  ->  endereço: /api/fila
 //
 // Na Vercel, todo arquivo dentro da pasta /api vira um endereço.
-// Este arquivo atende 3 pedidos, diferenciados pelo MÉTODO HTTP:
+// Este arquivo atende 4 pedidos, diferenciados pelo MÉTODO HTTP:
 //   GET     /api/fila  -> lista a fila
 //   POST    /api/fila  -> entra na fila   (body: { "nome": "Ana" })
 //   DELETE  /api/fila  -> tira DESTE dispositivo da fila
+//   PATCH   /api/fila  -> manda DESTE dispositivo para o fim da fila ("já joguei")
 // ==========================================================
 import { neon } from "@neondatabase/serverless";
 import { randomUUID } from "node:crypto";
@@ -79,7 +80,7 @@ function limparNome(valor) {
 }
 
 // ----------------------------------------------------------
-// AS 3 AÇÕES
+// AS 4 AÇÕES
 // ----------------------------------------------------------
 
 async function listarFila(res, dispositivoId) {
@@ -155,6 +156,55 @@ async function sairDaFila(res, dispositivoId) {
   return res.status(200).json({ ok: true });
 }
 
+async function irParaOFim(res, dispositivoId) {
+  // Como a ordem da fila é "ORDER BY id" e o id é gerado pelo banco, ir
+  // para o fim = apagar a linha desta pessoa e inserir de novo (mesmo nome
+  // e mesmo dispositivo). O banco dá um id maior que todos, e quem estava
+  // atrás sobe uma posição sozinho (a posição #N vem da ordem, não do id).
+  //
+  // Tudo num ÚNICO comando SQL, então é atômico: ou apaga e insere, ou não
+  // faz nada. Não existe "meio do caminho" em que a pessoa some da fila.
+  //
+  // O "id < max(id)" é a regra "quem já é o último não se move": se for o
+  // último (ou o único), o DELETE não apaga nada e o INSERT não insere nada.
+  // Repare: de novo NÃO recebemos id nenhum, só mexemos no próprio dispositivo.
+  const movidos = await sql`
+    WITH removido AS (
+      DELETE FROM fila
+      WHERE dispositivo_id = ${dispositivoId}
+        AND id < (SELECT max(id) FROM fila)
+      RETURNING nome, dispositivo_id
+    )
+    INSERT INTO fila (nome, dispositivo_id)
+    SELECT nome, dispositivo_id FROM removido
+    RETURNING id, nome, (SELECT count(*)::int FROM fila) AS posicao
+  `;
+
+  if (movidos.length === 1) {
+    // Total antes = total depois (saiu um, entrou um), então "posicao" é
+    // o total de pessoas: a pessoa agora ocupa o último lugar.
+    return res.status(200).json({
+      pessoa: { id: movidos[0].id, nome: movidos[0].nome },
+      posicao: movidos[0].posicao,
+    });
+  }
+
+  // Nada foi movido. Descobrimos o motivo: não está na fila, ou já é a última.
+  const resumo = await sql`
+    SELECT
+      count(*)::int AS total,
+      (count(*) FILTER (WHERE dispositivo_id = ${dispositivoId}))::int AS minha
+    FROM fila
+  `;
+  if (resumo[0].minha === 0) {
+    return responderErro(res, 404, "NAO_ESTA_NA_FILA", "Este dispositivo não está na fila.");
+  }
+  if (resumo[0].total === 1) {
+    return responderErro(res, 409, "JA_E_O_ULTIMO", "Você é o único na fila, então já está no fim.");
+  }
+  return responderErro(res, 409, "JA_E_O_ULTIMO", "Você já é o último da fila.");
+}
+
 // ----------------------------------------------------------
 // PORTA DE ENTRADA: a Vercel chama esta função a cada pedido
 // ----------------------------------------------------------
@@ -174,8 +224,11 @@ export default async function handler(req, res) {
     if (req.method === "DELETE") {
       return await sairDaFila(res, dispositivoId);
     }
+    if (req.method === "PATCH") {
+      return await irParaOFim(res, dispositivoId);
+    }
 
-    res.setHeader("Allow", "GET, POST, DELETE");
+    res.setHeader("Allow", "GET, POST, DELETE, PATCH");
     return responderErro(res, 405, "METODO_NAO_PERMITIDO", "Método não permitido.");
   } catch (erro) {
     // O erro de verdade vai para o log da Vercel (para você investigar),

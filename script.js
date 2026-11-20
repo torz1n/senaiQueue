@@ -12,6 +12,7 @@ let fila = [];                 // cada item: { id, nome, minha }
 let carregou = false;          // já recebemos a fila pelo menos uma vez?
 let ocupado = false;           // tem um pedido em andamento? (evita toque duplo)
 let idRecemAdicionado = null;  // só para animar o card que acabou de entrar
+let avisoAcao = null;          // texto do aviso da última ação (ex.: "Você foi para o fim...")
 
 /* ==========================================================
    2) REFERÊNCIAS AO HTML
@@ -23,6 +24,8 @@ const mensagemErro = document.getElementById("mensagem-erro");
 const areaStatus = document.getElementById("area-status");
 const textoStatus = document.getElementById("texto-status");
 const botaoSair = document.getElementById("botao-sair");
+const botaoFim = document.getElementById("botao-fim");
+const mensagemAviso = document.getElementById("mensagem-aviso");
 const listaFila = document.getElementById("lista-fila");
 const contador = document.getElementById("contador");
 const mensagemVazia = document.getElementById("mensagem-vazia");
@@ -67,6 +70,9 @@ async function carregarFila() {
     carregou = true;
 
     if (mudou) {
+      // A fila mudou (alguém entrou, saiu ou passou a vez): o aviso da
+      // ação anterior pode ter ficado velho, então sai de cena.
+      avisoAcao = null;
       renderizar();
     }
   } catch (erro) {
@@ -101,6 +107,26 @@ async function sairDaFila() {
 
   await carregarFila();
   return { ok: true };
+}
+
+// Pede ao servidor para mandar ESTE dispositivo para o fim da fila.
+// A regra (quem já é o último não se move) é do servidor. Aqui só
+// repassamos o resultado.
+async function irParaOFimDaFila() {
+  const { ok, dados } = await chamarApi("PATCH");
+
+  if (ok) {
+    idRecemAdicionado = dados.pessoa.id; // o card ganha a animação de entrada no novo lugar
+    await carregarFila();
+    return { ok: true, posicao: dados.posicao };
+  }
+
+  // A tela estava desatualizada (já era o último, ou nem estava na fila):
+  // sincroniza com o servidor para a tela refletir a realidade.
+  if (dados.codigo === "JA_E_O_ULTIMO" || dados.codigo === "NAO_ESTA_NA_FILA") {
+    await carregarFila();
+  }
+  return { ok: false, codigo: dados.codigo, erro: dados.erro || "Não foi possível passar para o fim da fila." };
 }
 
 /* ==========================================================
@@ -180,14 +206,32 @@ function atualizarFormulario() {
   });
   const jaEntrou = Boolean(minhaEntrada);
 
+  // Sou o último? (inclui o caso de ser o único na fila.) Quem já está no
+  // fim não tem para onde ir, então o botão "Já joguei" fica inativo.
+  // É só o ESTADO DO BOTÃO: a regra de verdade é conferida no servidor.
+  const souUltimo = jaEntrou && fila[fila.length - 1].minha;
+
   campoNome.disabled = jaEntrou || ocupado;
   botaoEntrar.disabled = jaEntrou || ocupado;
   botaoSair.disabled = ocupado;
+  botaoFim.disabled = souUltimo || ocupado;
 
   if (jaEntrou) {
     textoStatus.textContent = "Você está na fila como " + minhaEntrada.nome + ".";
+  } else {
+    avisoAcao = null; // saiu da fila: o aviso não faz mais sentido
   }
   areaStatus.classList.toggle("escondido", !jaEntrou);
+
+  // Aviso: a mensagem da última ação tem prioridade. Se não houver, e a
+  // pessoa estiver no fim, explica por que o botão está inativo.
+  let aviso = avisoAcao || "";
+  if (!aviso && souUltimo) {
+    aviso = fila.length === 1
+      ? "Você está sozinho por aqui..."
+      : "Você já é o último da fila!";
+  }
+  mensagemAviso.textContent = aviso;
 }
 
 function definirOcupado(valor) {
@@ -256,6 +300,30 @@ botaoSair.addEventListener("click", async function () {
     mostrarErro("Sem conexão com o servidor. Tente de novo.");
   } finally {
     definirOcupado(false);
+  }
+});
+
+botaoFim.addEventListener("click", async function () {
+  if (ocupado) {
+    return;
+  }
+
+  definirOcupado(true);
+  try {
+    const resultado = await irParaOFimDaFila();
+    if (resultado.ok) {
+      limparErro();
+      avisoAcao = "Você foi para o fim da fila (posição #" + resultado.posicao + ").";
+    } else if (resultado.codigo === "JA_E_O_ULTIMO") {
+      limparErro();
+      avisoAcao = resultado.erro; // a mensagem vem pronta do servidor
+    } else {
+      mostrarErro(resultado.erro);
+    }
+  } catch (erro) {
+    mostrarErro("Sem conexão com o servidor. Tente de novo.");
+  } finally {
+    definirOcupado(false); // também atualiza o botão e o aviso na tela
   }
 });
 

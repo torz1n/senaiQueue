@@ -78,10 +78,19 @@
 
     <!-- Aparece depois que este dispositivo entrou na fila:
          mostra o nome e oferece o botão para sair. -->
-    <div id="area-status" class="status escondido" aria-live="polite">
-      <span id="texto-status"></span>
-      <button id="botao-sair" type="button" class="botao-sair">Sair da fila</button>
+    <div id="area-status" class="status escondido">
+      <span id="texto-status" aria-live="polite"></span>
+      <div class="acoes">
+        <!-- "Já joguei": manda este dispositivo para o fim da fila. -->
+        <button id="botao-fim" type="button" class="botao-fim">Já joguei</button>
+        <button id="botao-sair" type="button" class="botao-sair">Sair da fila</button>
+      </div>
     </div>
+
+    <!-- Mensagem de AVISO (não é erro): conta o que a pessoa acabou de
+         fazer ("Você foi para o fim da fila...") ou explica por que o
+         botão "Já joguei" está inativo. -->
+    <p id="mensagem-aviso" class="aviso" aria-live="polite"></p>
 
     <section class="fila">
       <p id="contador" class="contador" aria-live="polite"></p>
