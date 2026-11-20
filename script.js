@@ -228,8 +228,8 @@ function atualizarFormulario() {
   let aviso = avisoAcao || "";
   if (!aviso && souUltimo) {
     aviso = fila.length === 1
-      ? "Você é o único na fila, então já está no fim."
-      : "Você já é o último da fila.";
+      ? "Você está sozinho por aqui..."
+      : "Você já é o último da fila!";
   }
   mensagemAviso.textContent = aviso;
 }
