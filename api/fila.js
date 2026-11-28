@@ -23,7 +23,7 @@ const LIMITE_NOME = 30;
 
 // Tempo de inatividade que reinicia a fila. É o ÚNICO lugar onde esse
 // valor existe: para mudar o tempo, mude só este número.
-const TEMPO_INATIVIDADE_MINUTOS = 30;
+const TEMPO_INATIVIDADE_MINUTOS = 1;
 const NOME_COOKIE = "dispositivo";
 const UM_ANO_EM_SEGUNDOS = 60 * 60 * 24 * 365;
 
