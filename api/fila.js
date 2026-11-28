@@ -2,6 +2,10 @@
 // API DA FILA  ->  endereço: /api/fila
 //
 // Na Vercel, todo arquivo dentro da pasta /api vira um endereço.
+// Este arquivo também reinicia a fila sozinho: se ninguém entrar, sair
+// ou passar a vez por TEMPO_INATIVIDADE_MINUTOS, a tabela inteira é apagada.
+// (Veja reiniciarFilaSeInativa() e registrarAtividade() mais abaixo.)
+//
 // Este arquivo atende 4 pedidos, diferenciados pelo MÉTODO HTTP:
 //   GET     /api/fila  -> lista a fila
 //   POST    /api/fila  -> entra na fila   (body: { "nome": "Ana" })
@@ -16,6 +20,10 @@ import { randomUUID } from "node:crypto";
 const sql = neon(process.env.DATABASE_URL);
 
 const LIMITE_NOME = 30;
+
+// Tempo de inatividade que reinicia a fila. É o ÚNICO lugar onde esse
+// valor existe: para mudar o tempo, mude só este número.
+const TEMPO_INATIVIDADE_MINUTOS = 30;
 const NOME_COOKIE = "dispositivo";
 const UM_ANO_EM_SEGUNDOS = 60 * 60 * 24 * 365;
 
@@ -80,6 +88,47 @@ function limparNome(valor) {
 }
 
 // ----------------------------------------------------------
+// REINÍCIO AUTOMÁTICO POR INATIVIDADE
+//
+// "Atividade" = alguém entrou, saiu ou passou a vez (as ações que
+// ESCREVEM na fila). Só olhar a fila (GET) NÃO conta: o front-end faz
+// GET a cada 5 s, e se isso contasse, a fila nunca ficaria inativa.
+//
+// A hora da última atividade fica na tabela fila_atividade, que tem uma
+// única linha (id = 1). O "agora" vem do relógio do BANCO (now()), e não
+// do JavaScript: assim todas as execuções da função, mesmo em servidores
+// diferentes da Vercel, usam o mesmo relógio e o mesmo critério.
+// ----------------------------------------------------------
+
+// Se passou o tempo de inatividade, apaga TODAS as linhas da fila.
+// Roda no começo de TODO pedido: quem abrir a página depois do prazo
+// já vê a fila vazia. Não precisa de um "relógio" rodando de fundo
+// (funções serverless só existem enquanto atendem um pedido).
+// Se não passou o prazo, o WHERE não bate e nada é apagado.
+async function reiniciarFilaSeInativa() {
+  await sql`
+    DELETE FROM fila
+    WHERE EXISTS (
+      SELECT 1 FROM fila_atividade
+      WHERE id = 1
+        AND ultima_atividade < now() - make_interval(mins => ${TEMPO_INATIVIDADE_MINUTOS})
+    )
+  `;
+}
+
+// Marca "agora" como a última atividade (cria a linha se não existir).
+// É chamada ANTES de escrever na fila. Se fosse depois, haveria uma
+// janela minúscula em que a linha nova já existe mas a hora ainda é a
+// velha, e um pedido simultâneo poderia apagar a fila nesse intervalo.
+async function registrarAtividade() {
+  await sql`
+    INSERT INTO fila_atividade (id, ultima_atividade)
+    VALUES (1, now())
+    ON CONFLICT (id) DO UPDATE SET ultima_atividade = now()
+  `;
+}
+
+// ----------------------------------------------------------
 // AS 4 AÇÕES
 // ----------------------------------------------------------
 
@@ -118,6 +167,7 @@ async function entrarNaFila(req, res, dispositivoId) {
   // tempo (dois toques rápidos, duas abas...) e os dois passariam na checagem.
   // Então tentamos inserir direto e deixamos o BANCO recusar (UNIQUE).
   // O banco faz isso de forma atômica: é impossível furar a regra.
+  await registrarAtividade();
   try {
     const linhas = await sql`
       INSERT INTO fila (nome, dispositivo_id)
@@ -145,6 +195,7 @@ async function sairDaFila(res, dispositivoId) {
   // Repare: NÃO recebemos o id de ninguém. O servidor apaga a linha do
   // dispositivo que fez o pedido. Por desenho, é impossível apagar o nome
   // de outra pessoa (não existe nem "campo" para pedir isso).
+  await registrarAtividade();
   const removidos = await sql`
     DELETE FROM fila
     WHERE dispositivo_id = ${dispositivoId}
@@ -168,6 +219,7 @@ async function irParaOFim(res, dispositivoId) {
   // O "id < max(id)" é a regra "quem já é o último não se move": se for o
   // último (ou o único), o DELETE não apaga nada e o INSERT não insere nada.
   // Repare: de novo NÃO recebemos id nenhum, só mexemos no próprio dispositivo.
+  await registrarAtividade();
   const movidos = await sql`
     WITH removido AS (
       DELETE FROM fila
@@ -214,6 +266,11 @@ export default async function handler(req, res) {
 
   try {
     const dispositivoId = identificarDispositivo(req, res);
+
+    // Antes de atender qualquer pedido: a fila passou do tempo de
+    // inatividade? Se sim, ela é esvaziada aqui, e o pedido já enxerga
+    // a fila nova.
+    await reiniciarFilaSeInativa();
 
     if (req.method === "GET") {
       return await listarFila(res, dispositivoId);
